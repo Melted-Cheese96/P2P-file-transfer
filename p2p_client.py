@@ -8,8 +8,8 @@ import sys
 hostname = getpass.getuser()
 
 def send_image_file(image_bytes, file_name):
-    host = '192.168.0.250'
-    port = 1035
+    host = ''
+    port = 0
     img_query = 'IMG'
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
