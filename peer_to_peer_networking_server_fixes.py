@@ -5,8 +5,8 @@ import pickle
 
 class PTPServer:
     def __init__(self):
-        self.host = '192.168.0.250'
-        self.port = 1035
+        self.host = ''
+        self.port = 0
         self.socket_connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket_connection.bind((self.host, self.port))
         self.listen_to_server()
