@@ -6,8 +6,8 @@ from time import sleep
 
 class PTPServer:
     def __init__(self):
-        self.host = ''
-        self.port = 0
+        self.host = '192.168.0.250'
+        self.port = 1035
         self.socket_connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket_connection.bind((self.host, self.port))
         self.listen_to_server()
@@ -37,12 +37,19 @@ class PTPServer:
 
     @staticmethod
     def read_file(file_name):
-        with open(file_name ,'r') as doc:
-            file_content = doc.read()
-        return file_content
+        try:
+            with open(file_name,'r') as doc:
+                file_content = doc.read()
+            file_content = str.encode(file_content)
+            return file_content
+        except UnicodeDecodeError:
+            with open(file_name, 'rb') as doc:
+                file_content = doc.read()
+            return file_content
 
     def receive_information(self, client):
         image_content = b''
+        image_len = 0
         while True:
             data = client.recv(1024)
             if data:
@@ -50,20 +57,29 @@ class PTPServer:
                 if 'IMG' in data:
                     print('Img Query')
                     while True:
-                        image_file_name = client.recv(1024)
-                        if image_file_name:
-                            image_name = image_file_name.decode()
+                        size = client.recv(1024)
+                        if size:
+                            size = size.decode()
+                            print('TEST: {}'.format(size))
+                            size = int(size)
                             while True:
-                                image_bytes = client.recv(1024)
-                                print(len(image_bytes))
-                                if len(image_bytes) <= 6:
-                                    client.sendall(b'All information has been received!')
-                                    client.close()
-                                    self.listen_to_server()
-                                else:
-                                    image_content += image_bytes
-                                    with open(image_name, 'wb') as image_file:
-                                        image_file.write(image_content)
+                                image_file_name = client.recv(1024)
+                                if image_file_name:
+                                    image_name = image_file_name.decode()
+                                    while True:
+                                        #print(len(image_bytes))
+                                        print('image_len: {}'.format(image_len))
+                                        while len(image_content) < size:
+                                            image_bytes = client.recv(1024)
+                                            image_content += image_bytes
+                                            print(len(image_content))
+                                            with open(image_name, 'wb') as image_file:
+                                                image_file.write(image_content)
+                                            if len(image_content) == size:
+                                                print('test')
+                                        client.sendall(b'Image stored!')
+                                        client.close()
+                                        self.listen_to_server()
                         else:
                             pass
 
@@ -93,9 +109,15 @@ class PTPServer:
                     while True:
                         file_to_retrieve = client.recv(1024) # Gets file name from the client.
                         if file_to_retrieve:
+                            with open(file_to_retrieve.decode(), 'rb') as doc:
+                                content = doc.read()
+                            size = len(content)
+                            size = str(size)
                             file_information = self.read_file(file_to_retrieve.decode())
                             print(file_information)
-                            client.sendall(str.encode(file_information))
+                            client.sendall(str.encode(size))
+                            sleep(2)
+                            client.sendall(file_information)
                             client.close()
                             self.listen_to_server()
                 else:
