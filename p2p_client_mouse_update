@@ -11,8 +11,8 @@ hostname = getpass.getuser()
 
 
 def send_image_file(image_bytes, file_name):
-    host = '192.168.0.48'
-    port = 1035
+    host = ''
+    port = 0
     img_query = 'IMG'
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     image_size = len(image_bytes)
@@ -38,8 +38,8 @@ def send_image_file(image_bytes, file_name):
 
 
 def send_text_file(information, file_name):
-    host = '192.168.0.48'
-    port = 1035
+    host = ''
+    port = 0
     file_name_query = 'FILENAME'
     # print(file_name)
     # print(file_name_query)
@@ -93,8 +93,8 @@ def retrieve_file(direc, file_type):  # Gets the file from local machine and set
 
 
 def get_saved_image(name):
-    host = '192.168.0.250'
-    port = 1035
+    host = ''
+    port = 0
     new_image_content = b''
     new_image_len = 0
     path_name = '/home/{}/Downloads'.format(hostname)
@@ -122,8 +122,8 @@ def get_saved_image(name):
 
 def get_saved_file(file_name):  # Gets text file from the server that the user has asked for.
     retrieve_query = 'RET:{}'.format(file_name)
-    host = '192.168.0.48'
-    port = 1035
+    host = ''
+    port = 0
     byte_size = 512
     text_content = ''
     file_len = 0
