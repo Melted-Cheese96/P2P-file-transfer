@@ -1,0 +1,207 @@
+import socket
+import sys
+import tkinter as tk
+from tkinter import filedialog
+from time import sleep
+import getpass
+import os
+
+
+class ServerClient:
+    def __init__(self):
+        self.hostname = getpass.getuser()
+        self.home_dir = '/home/{}'.format(self.hostname)
+        self.host = ''
+        self.port = 0
+        self.unsupported_text_file_types = ['.py', '.png', '.jpg', '.jpeg', '.iso', '.tar.gz', '.zip', '.img']
+        self.image_extensions = ['.png', '.PNG', '.jpeg', '.JPEG', '.jpg', '.JPG']
+        self.downloads_folder = '/home/{}/Downloads'.format(self.hostname)
+
+    def prompt(self):
+        user_selection = input('Type in 1 to store a file, Type in 2 to store an image. Type in 3 to retrieve a saved file')
+        root = tk.Tk()
+        root.withdraw()
+        if user_selection == '1':
+            file_path = filedialog.askopenfile(initialdir=self.home_dir)
+            try:
+                file_path = file_path.name
+                for item in self.unsupported_text_file_types:
+                    if file_path.endswith(item):
+                        print('Unsupported file type!')
+                        print('Restarting...')
+                        sleep(1)
+                        self.prompt()
+                self.get_text_file(file_path)
+            except AttributeError:
+                print('You did not select a file!')
+                print('Restarting...')
+                sleep(1)
+                self.prompt()
+        elif user_selection == '2':
+            image_path = filedialog.askopenfile(initialdir='/home/{}/Pictures'.format(self.hostname))
+            try:
+                image_path = image_path.name
+                for item in self.image_extensions:
+                    if image_path.endswith(item):
+                        self.get_image_file(image_path)
+                    else:
+                        pass
+            except AttributeError:
+                print('You did not choose a file!')
+                print('Restarting...')
+                sleep(1)
+                self.prompt()
+        elif user_selection == '3':
+            file_type = input("'IMG' or 'text'?")
+            if file_type.lower() == 'img':
+                name = input('Enter name')
+                self.retrieve_image_file(name)
+            elif file_type.lower() == 'text':
+                file_name = input('Enter file name: ')
+                self.retrieve_text_file(file_name)
+            else:
+                print('Invalid input')
+                print('Restarting... \n')
+                sleep(1)
+                self.prompt()
+        elif user_selection == '4':
+            print('Quitting...')
+            sys.exit()
+
+    def retrieve_image_file(self, file_name):
+        image_content = b''
+        ret_query = 'RET'
+        image_len = 0
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        os.chdir(self.downloads_folder)
+        try:
+            s.connect((self.host, self.port))
+            s.sendall(str.encode(ret_query))
+            sleep(2)
+            s.sendall(str.encode(file_name))
+            sleep(1)
+            size = s.recv(1024)
+            print(size)
+            while image_len < int(size.decode()):
+                image_bytes = s.recv(1024)
+                image_content += image_bytes
+                with open(file_name, 'wb') as doc:
+                    doc.write(image_content)
+                image_len = len(image_content)
+                print(image_len)
+            print('File has been downloaded!')
+            s.close()
+            self.prompt()
+        except ConnectionRefusedError:
+            print('Check internet connection')
+            self.prompt()
+
+    def retrieve_text_file(self, name):
+        text_content = ''
+        ret_query = 'RET'
+        byte_size = 512
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.connect((self.host, self.port))
+            s.sendall(str.encode(ret_query))
+            sleep(2)
+            s.sendall(str.encode(name))
+            file_size = s.recv(1024)
+            while True:
+                information = s.recv(byte_size)
+             #   print(information)
+            #    print(len(information))
+                if len(information) <= 6:
+                    break
+                else:
+                    text_content += information.decode()
+            os.chdir(self.downloads_folder)
+            print(text_content)
+            with open(name, 'w') as doc:
+                doc.write(text_content)
+            print('{} has been downloaded and saved into your downloads folder!'.format(name))
+            print('Restarting...')
+            sleep(1)
+            s.close()
+            self.prompt()
+        except ConnectionRefusedError:
+            print('Check your internet connection!')
+            print('Restarting...')
+            sleep(1)
+            self.prompt()
+
+    def get_image_file(self, path):
+        with open(path, 'rb') as doc:
+            image_content = doc.read()
+        path = path.split('/')
+        file_len = len(path)
+        file_name_index = file_len - 1
+        file_name = path[file_name_index]
+        print(file_name)
+        self.send_image_file(file_name, image_content)
+
+    def send_image_file(self, image_name, image_content):
+        img_query = 'IMG'
+        size = len(image_content)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.connect((self.host, self.port))
+            s.sendall(str.encode(img_query))
+            sleep(1)
+            s.sendall(str.encode(str(size)))
+            sleep(1)
+            s.sendall(str.encode(image_name))
+            sleep(1)
+            s.sendall(image_content)
+            sleep(2)
+            response = s.recv(1024)
+            print(response.decode())
+            s.close()
+            sleep(1)
+            self.prompt()
+        except ConnectionRefusedError:
+            print('Check your internet connection')
+            print('Restarting...')
+            sleep(1)
+            self.prompt()
+
+    def get_text_file(self, path):
+        with open(path, 'r') as doc:
+            content = doc.read()
+        path = path.split('/')
+        path_len = len(path)
+        path_len -= 1
+        file_name = path_len
+        file_name = path[file_name]
+        self.send_text_file(file_name, content)
+
+    def send_text_file(self, file_name, file_content):
+        query = 'FILENAME'
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.connect((self.host, self.port))
+            s.sendall(str.encode(query))
+            sleep(2)
+            s.sendall(str.encode(file_name))
+            #response = s.recv(1024)
+            #print(response.decode())
+            sleep(2)
+            s.sendall(str.encode(file_content))
+            sleep(2)
+            s.sendall(b'FINISH')
+            sleep(1)
+            response = s.recv(1024)
+            print(response.decode())
+            sleep(1)
+            s.close()
+            print('Restarting...')
+            sleep(1)
+            self.prompt()
+        except ConnectionRefusedError:
+            print('Check your internet connection!')
+            sleep(1)
+            self.prompt()
+
+
+client1 = ServerClient()
+client1.prompt()
